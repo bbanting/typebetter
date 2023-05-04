@@ -93,6 +93,12 @@ int make_request(const char *url, Response *res) {
 }
 
 
+/*Clean up any memory contained in a Response.*/
+void cleanup_response(Response *res) {
+	free(res->contents);
+}
+
+
 int main() {
 	Response response = {0};
 	if (make_request(API_URL, &response) == REQUEST_FAILURE) {
@@ -101,7 +107,7 @@ int main() {
 
 	printf("Response contents: %s\n", response.contents);
 
-	free(response.contents);
+	cleanup_response(&response);
 
 	return EXIT_SUCCESS;
 }
