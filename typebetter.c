@@ -9,14 +9,15 @@
 #define API_URL "https://api.esv.org/v3/passage/text/?q=John+3&include-headings=False&include-footnotes=False&include-verse-numbers=False&include-short-copyright=False&include-passsage-references=False&include-first-verse-numbers=False"
 
 
-typedef struct response_data {
+typedef struct {
 	char* contents;
 	size_t size;
 } Response;
 
 
-static size_t write_callback(char *data, size_t size, size_t nmemb, void *data_memory) {
-	struct response_data *rd = (struct response_data *)data_memory;
+/*Callback to be used by curl. */
+static size_t write_callback(char *data, size_t size, size_t nmemb, void *data_dest) {
+	Response *rd = (Response *)data_dest;
 	char *ptr = realloc(rd->contents, rd->size + nmemb + 1);
 	if (ptr == NULL) {
 		fprintf(stderr, "realloc failed.\n");
@@ -32,6 +33,8 @@ static size_t write_callback(char *data, size_t size, size_t nmemb, void *data_m
 }
 
 
+/*Get authorization token from file and construct full header string,
+copy to buffer (str). */
 static void get_auth_header(char *str) {
 	FILE *fp = fopen("token.txt", "r");
 	if (fp == NULL) {
@@ -48,8 +51,9 @@ static void get_auth_header(char *str) {
 } 
 
 
+/*Takes a url and pointer to Response struct, makes request and assigns
+the response body to res.content. Non-zero return values indicate failure. */
 int make_request(const char *url, Response *res) {
-
 	// Initialize curl.
 	CURL *curl;
 	curl = curl_easy_init();
@@ -57,7 +61,6 @@ int make_request(const char *url, Response *res) {
 		fprintf(stderr, "Curl init failure.\n");
 		return REQUEST_FAILURE;
 	}
-
 
 	// Construct headers.
 	char auth_header[100];
@@ -67,13 +70,11 @@ int make_request(const char *url, Response *res) {
 
 	if (headers == NULL) return REQUEST_FAILURE;
 
-
 	// Set curl options.
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)res);
-
 
 	// Make request with curl.
 	CURLcode res_code = curl_easy_perform(curl);
@@ -83,7 +84,6 @@ int make_request(const char *url, Response *res) {
 		free(res->contents);
 		return REQUEST_FAILURE;
 	}
-
 
 	// Clean up.
 	curl_slist_free_all(headers);
