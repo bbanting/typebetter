@@ -6,7 +6,7 @@
 
 #define REQUEST_FAILURE 1
 #define REQUEST_SUCCESS 0
-#define API_URL "https://api.esv.org/v3/passage/text/?q=John+3&include-headings=False&include-footnotes=False&include-verse-numbers=False&include-short-copyright=False&include-passsage-references=False&include-first-verse-numbers=False"
+#define API_URL "https://api.esv.org/v3/passage/text/?q=John+3&include-headings=False&include-footnotes=False&include-verse-numbers=True&include-short-copyright=False&include-passsage-references=False&include-first-verse-numbers=False"
 
 
 typedef struct {
@@ -17,17 +17,17 @@ typedef struct {
 
 /*Callback to be used by curl. */
 static size_t write_callback(char *data, size_t size, size_t nmemb, void *data_dest) {
-	Response *rd = (Response *)data_dest;
-	char *ptr = realloc(rd->contents, rd->size + nmemb + 1);
+	Response *res = (Response *)data_dest;
+	char *ptr = realloc(res->contents, res->size + nmemb + 1);
 	if (ptr == NULL) {
 		fprintf(stderr, "realloc failed.\n");
 		return 0; // Failure
 	}
 
-	rd->contents = ptr;
-	memcpy(&(rd->contents[rd->size]), data, nmemb);
-	rd->size += nmemb;
-	rd->contents[rd->size] = 0;
+	res->contents = ptr;
+	memcpy(&(res->contents[res->size]), data, nmemb);
+	res->size += nmemb;
+	res->contents[res->size] = 0;
 
 	return nmemb; // Success
 }
@@ -93,6 +93,46 @@ int make_request(const char *url, Response *res) {
 }
 
 
+/*Take dummy response data from a text file and use it to populate
+res. Same interface as make_request except it expects a filepath instead
+of a URL. */
+int make_dummy_request(const char *filepath, Response *res) {
+	// Open the file.
+	FILE *fp = fopen(filepath, "r");
+	if (fp == NULL) {
+		fprintf(stderr, "Failed to open dummy response file.\n");
+		return REQUEST_FAILURE;
+	}
+
+	// Loop through file contents and copy text to res->contents.
+	// The size of res->contents is enlarged gradually.
+	res->size = 50;
+	res->contents = malloc(res->size);
+	unsigned long count = 0;
+	int ch;
+	while ((ch = getc(fp)) != EOF) {
+		if ((++count + 1) <= res->size) {
+			// Enough space for ch.
+			res->contents[count-1] = (char)ch;
+			continue;
+		}
+		// Not enough space for ch. Enlarge array.
+		res->size += 50;
+		char *ptr = realloc(res->contents, res->size);
+		if (ptr == NULL) {
+			fprintf(stderr, "Realloc failed.\n");
+			return REQUEST_FAILURE;
+		}
+		res->contents = ptr;
+		res->contents[count-1] = (char)ch;
+	}
+
+	res->contents[count] = 0;
+
+	return REQUEST_SUCCESS;
+}
+
+
 /*Clean up any memory contained in a Response.*/
 void cleanup_response(Response *res) {
 	free(res->contents);
@@ -101,7 +141,10 @@ void cleanup_response(Response *res) {
 
 int main() {
 	Response response = {0};
-	if (make_request(API_URL, &response) == REQUEST_FAILURE) {
+	// if (make_request(API_URL, &response) == REQUEST_FAILURE) {
+	// 	exit(EXIT_FAILURE);
+	// }
+	if (make_dummy_request("dummy_response.txt", &response) == REQUEST_FAILURE) {
 		exit(EXIT_FAILURE);
 	}
 
