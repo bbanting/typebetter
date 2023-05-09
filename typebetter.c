@@ -167,7 +167,17 @@ char *get_nth_verse(const char *text, unsigned n) {
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
+	// Get verse number from input.
+	unsigned verse_number = 1;
+	if (argc > 1) {
+		verse_number = strtol(argv[1], NULL, 10);
+	} else {
+		fprintf(stderr, "Invalid command format. Enter a verse number.\n");
+	}
+
+
+	// Make request.
 	Response response = {0};
 	// if (make_request(API_URL, &response) == REQUEST_FAILURE) {
 	// 	exit(EXIT_FAILURE);
@@ -176,9 +186,7 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 
-	// printf("Response contents: %s\n", response.contents);
 
-	unsigned verse_number = 2;
 	char *verse = get_nth_verse(response.contents, verse_number);
 	printf("Verse %u: %s\n", verse_number, verse);
 	free(verse);
