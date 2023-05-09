@@ -139,6 +139,34 @@ void cleanup_response(Response *res) {
 }
 
 
+/*Return a string containing the verse referenced by n. */
+char *get_nth_verse(const char *text, unsigned n) {
+	// Get start and end indexes.
+	char search[10];
+
+	sprintf(search, "[%d]", n);
+	char *start = strstr(text, search) + (strlen(search) + 1);
+
+	sprintf(search, "[%d]", n+1);
+	char *end = strstr(text, search) - 1;
+
+	// Allocate memory for verse.
+	char *str;
+	if ((str = malloc((end-start)+1)) == NULL) {
+		fprintf(stderr, "Malloc error in get_nth_verse\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// Copy verse string into str.
+	for (int i=0; i<end-start; i++) {
+		str[i] = start[i];
+	}
+	str[end-start] = 0;
+
+	return str;
+}
+
+
 int main() {
 	Response response = {0};
 	// if (make_request(API_URL, &response) == REQUEST_FAILURE) {
@@ -148,7 +176,12 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Response contents: %s\n", response.contents);
+	// printf("Response contents: %s\n", response.contents);
+
+	unsigned verse_number = 2;
+	char *verse = get_nth_verse(response.contents, verse_number);
+	printf("Verse %u: %s\n", verse_number, verse);
+	free(verse);
 
 	cleanup_response(&response);
 
