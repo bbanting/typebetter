@@ -145,10 +145,21 @@ char *get_nth_verse(const char *text, unsigned n) {
 	char search[10];
 
 	sprintf(search, "[%d]", n);
-	char *start = strstr(text, search) + (strlen(search) + 1);
+	char *start = strstr(text, search);
+	if (start == NULL) {
+		fprintf(stderr, "Verse not found.\n");
+		exit(EXIT_FAILURE);
+	} else {
+		start += (strlen(search) + 1);
+	}
 
 	sprintf(search, "[%d]", n+1);
-	char *end = strstr(text, search) - 1;
+	char *end = strstr(text, search);
+	if (end == NULL) {
+		end = (text + strlen(text));
+	} else {
+		end -= 1;
+	}
 
 	// Allocate memory for verse.
 	char *str;
@@ -172,8 +183,11 @@ int main(int argc, char *argv[]) {
 	unsigned verse_number = 1;
 	if (argc > 1) {
 		verse_number = strtol(argv[1], NULL, 10);
+		if (verse_number > 200 || verse_number < 1)
+			fprintf(stderr, "Enter a valid verse number.\n");
 	} else {
 		fprintf(stderr, "Invalid command format. Enter a verse number.\n");
+		exit(EXIT_FAILURE);
 	}
 
 
