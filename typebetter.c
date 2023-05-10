@@ -15,7 +15,7 @@ typedef struct {
 } Response;
 
 
-/*Callback to be used by curl. */
+/**Callback to be used by curl. */
 static size_t write_callback(char *data, size_t size, size_t nmemb, void *data_dest) {
 	Response *res = (Response *)data_dest;
 	char *ptr = realloc(res->contents, res->size + nmemb + 1);
@@ -33,8 +33,9 @@ static size_t write_callback(char *data, size_t size, size_t nmemb, void *data_d
 }
 
 
-/*Get authorization token from file and construct full header string,
-copy to buffer (str). */
+/**Get authorization token from file and construct full header string,
+ * copy to buffer (str).
+*/
 static void get_auth_header(char *str) {
 	FILE *fp = fopen("token.txt", "r");
 	if (fp == NULL) {
@@ -51,8 +52,9 @@ static void get_auth_header(char *str) {
 } 
 
 
-/*Takes a url and pointer to Response struct, makes request and assigns
-the response body to res.content. Non-zero return values indicate failure. */
+/**Takes a url and pointer to Response struct, makes request and assigns
+ * the response body to res.content. Non-zero return values indicate failure.
+*/
 int make_request(const char *url, Response *res) {
 	// Initialize curl.
 	CURL *curl;
@@ -93,9 +95,10 @@ int make_request(const char *url, Response *res) {
 }
 
 
-/*Take dummy response data from a text file and use it to populate
-res. Same interface as make_request except it expects a filepath instead
-of a URL. */
+/**Take dummy response data from a text file and use it to populate
+ * res. Same interface as make_request except it expects a filepath instead
+ * of a URL. 
+*/
 int make_dummy_request(const char *filepath, Response *res) {
 	// Open the file.
 	FILE *fp = fopen(filepath, "r");
@@ -133,13 +136,15 @@ int make_dummy_request(const char *filepath, Response *res) {
 }
 
 
-/*Clean up any memory contained in a Response.*/
+/**Clean up any memory contained in a Response.*/
 void cleanup_response(Response *res) {
 	free(res->contents);
 }
 
 
-/*Return a string containing the verse referenced by n. */
+/**Return a string containing the verse referenced by n. If the verse
+ * is not found, return NULL. 
+*/
 char *get_nth_verse(const char *text, unsigned n) {
 	// Get start and end indexes.
 	char search[10];
@@ -147,8 +152,7 @@ char *get_nth_verse(const char *text, unsigned n) {
 	sprintf(search, "[%d]", n);
 	char *start = strstr(text, search);
 	if (start == NULL) {
-		fprintf(stderr, "Verse not found.\n");
-		exit(EXIT_FAILURE);
+		return NULL;
 	} else {
 		start += (strlen(search) + 1);
 	}
@@ -180,15 +184,15 @@ char *get_nth_verse(const char *text, unsigned n) {
 
 int main(int argc, char *argv[]) {
 	// Get verse number from input.
-	unsigned verse_number = 1;
-	if (argc > 1) {
-		verse_number = strtol(argv[1], NULL, 10);
-		if (verse_number > 200 || verse_number < 1)
-			fprintf(stderr, "Enter a valid verse number.\n");
-	} else {
-		fprintf(stderr, "Invalid command format. Enter a verse number.\n");
-		exit(EXIT_FAILURE);
-	}
+	// unsigned verse_number = 1;
+	// if (argc > 1) {
+	// 	verse_number = strtol(argv[1], NULL, 10);
+	// 	if (verse_number > 200 || verse_number < 1)
+	// 		fprintf(stderr, "Enter a valid verse number.\n");
+	// } else {
+	// 	fprintf(stderr, "Invalid command format. Enter a verse number.\n");
+	// 	exit(EXIT_FAILURE);
+	// }
 
 
 	// Make request.
@@ -201,9 +205,16 @@ int main(int argc, char *argv[]) {
 	}
 
 
-	char *verse = get_nth_verse(response.contents, verse_number);
-	printf("Verse %u: %s\n", verse_number, verse);
-	free(verse);
+	// The main loop.
+	for (int n=1; 1; n++) {
+		char *verse = get_nth_verse(response.contents, n);
+		if (verse == NULL) {
+			break;
+		}
+		printf("Verse %u: %s\n", n, verse);
+		free(verse);
+	}
+
 
 	cleanup_response(&response);
 
