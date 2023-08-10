@@ -182,6 +182,20 @@ char *get_nth_verse(const char *text, unsigned n) {
 }
 
 
+/**Prompt the user to attempt to type the string.*/
+void make_attempt(char *verse) {
+	char attempt[512];
+	fgets(attempt, 512, stdin);
+	attempt[strlen(attempt)-1] = '\0'; // Remove newline.
+
+	if (!strcmp(verse, attempt)) {
+		printf("You did it.\n\n");
+	} else {
+		printf("You didn't do it.\n\n");
+	}
+}
+
+
 int main(int argc, char *argv[]) {
 	// Get verse number from input.
 	// unsigned verse_number = 1;
@@ -211,10 +225,13 @@ int main(int argc, char *argv[]) {
 		if (verse == NULL) {
 			break;
 		}
-		printf("Verse %u: %s\n", n, verse);
+		
+		printf("Verse %u:\n%s\n", n, verse);
+
+		make_attempt(verse);
+
 		free(verse);
 	}
-
 
 	cleanup_response(&response);
 
