@@ -52,6 +52,54 @@ static void get_auth_header(char *str) {
 } 
 
 
+/**
+ * Takes a string with an offset that points to a unicode escape sequence 
+ * and returns the char it references. Exits with failure if the sequence 
+ * isn't found.
+ */
+char get_char_from_unicode_escape_sequence(const char *string, unsigned offset) {
+	unsigned num_targets = 5;
+	char targets[5][4] = {"2014", "2018", "2019", "201c", "201d"};
+	char replacements[5] = {'-', '\'', '\'', '\"', '\"'};
+
+	for (int i = 0; i < num_targets; i++) {
+		if (strncmp(string+offset, targets[i], 4) == 0) {
+			return replacements[i];
+		}
+	}
+
+	// No matches, report error.
+	char sequence[5];
+	strncpy(sequence, string+offset, 4);
+	sequence[5] = '\0';
+	fprintf(stderr, "No match for the unicode escape sequence: %s\n", sequence);
+	exit(EXIT_FAILURE);
+}
+
+
+/**Replace unicode escape sequences with appropriate characters. */
+void replace_unicode_escape_sequences(char *text) {
+	char new_text[strlen(text)+1];
+	unsigned new_len = 0;
+
+	int i = 0;
+	while (i < strlen(text)-1) {
+		if (text[i] == '\\' && text[i+1] == 'u') {
+			// It's a unicode escape sequence.
+			new_text[new_len++] = get_char_from_unicode_escape_sequence(text, i+2);
+			i += 6;
+		} else {
+			// It's a normal character.
+			new_text[new_len++] = text[i];
+			i += 1;
+		}
+	}
+	new_text[new_len] = '\0';
+
+	strcpy(text, new_text);
+}
+
+
 /**Takes a url and pointer to Response struct, makes request and assigns
  * the response body to res.content. Non-zero return values indicate failure.
 */
@@ -160,7 +208,7 @@ char *get_nth_verse(const char *text, unsigned n) {
 	sprintf(search, "[%d]", n+1);
 	char *end = strstr(text, search);
 	if (end == NULL) {
-		end = (text + strlen(text));
+		end = (char *)(text + strlen(text));
 	} else {
 		end -= 1;
 	}
@@ -197,18 +245,6 @@ void make_attempt(char *verse) {
 
 
 int main(int argc, char *argv[]) {
-	// Get verse number from input.
-	// unsigned verse_number = 1;
-	// if (argc > 1) {
-	// 	verse_number = strtol(argv[1], NULL, 10);
-	// 	if (verse_number > 200 || verse_number < 1)
-	// 		fprintf(stderr, "Enter a valid verse number.\n");
-	// } else {
-	// 	fprintf(stderr, "Invalid command format. Enter a verse number.\n");
-	// 	exit(EXIT_FAILURE);
-	// }
-
-
 	// Make request.
 	Response response = {0};
 	// if (make_request(API_URL, &response) == REQUEST_FAILURE) {
@@ -218,8 +254,9 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
+	replace_unicode_escape_sequences(response.contents);
 
-	// The main loop.
+	// Main loop.
 	for (int n=1; 1; n++) {
 		char *verse = get_nth_verse(response.contents, n);
 		if (verse == NULL) {
@@ -233,6 +270,7 @@ int main(int argc, char *argv[]) {
 		free(verse);
 	}
 
+	// Cleanup.
 	cleanup_response(&response);
 
 	return EXIT_SUCCESS;
