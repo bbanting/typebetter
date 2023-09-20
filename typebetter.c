@@ -9,10 +9,16 @@
 #define API_URL "https://api.esv.org/v3/passage/text/?q=John+3&include-headings=False&include-footnotes=False&include-verse-numbers=True&include-short-copyright=False&include-passsage-references=False&include-first-verse-numbers=False"
 
 
-typedef struct {
+typedef struct Response {
 	char* contents;
 	size_t size;
 } Response;
+
+
+typedef struct Verse {
+	unsigned number;
+	char *text;
+} Verse;
 
 
 /**Callback to be used by curl. */
@@ -230,6 +236,70 @@ char *get_nth_verse(const char *text, unsigned n) {
 }
 
 
+/**Get the number of the last verse in the chapter. */
+unsigned get_last_verse_number(const char *text) {
+	// These are values very specific to the ESV API.
+	#define START_STR "\"parsed\": [["
+	#define LENGTH 18
+
+	// Copy the revevant substring into num_str.
+	char *start = strstr(text, START_STR) + strlen(START_STR);
+	char num_str[20];
+	strncpy(num_str, start, LENGTH);
+	num_str[LENGTH] = '\0';
+
+	// Scan integers from that string into first and last.
+	unsigned first, last;
+	sscanf(num_str, "%u, %u", &first, &last);
+
+	// Turn last back into a string and scan it back into an integer, 
+	// ignoring the irrelevant characters.
+	char last_str[10];
+	sprintf(last_str, "%u", last);
+	sscanf(last_str + 5, "%u", &last);
+
+	return last;
+}
+
+
+/**Copy verses from text into array. */
+void get_verses(Verse *verses, size_t size, int *num_verses, const char *text) {
+	unsigned last_verse_number = get_last_verse_number(text);
+
+	for (unsigned i = 1; i <= last_verse_number; i++) {
+		// Change get_nth_verse to return null on fail
+		// Change get_nth_verse so that it doesn't look for n+1 verse
+		char *verse_text = get_nth_verse(text, i);
+		if (verse_text == NULL) continue;
+
+		// Check if verses is full. If so, expand.
+		if (*num_verses == size) {
+			size += 10;
+			Verse *ptr = realloc(verses, sizeof(Verse) * size);
+			if (ptr == NULL) {
+				fprintf(stderr, "realloc error in get_verses.\n");
+				exit(EXIT_FAILURE);
+			}
+			verses = ptr;
+		}
+
+		// Make and append the verse.
+		Verse verse = {i, verse_text};
+		verses[*num_verses] = verse;
+		*num_verses += 1;
+	}
+}
+
+
+/**Free the memory used by verses. */
+void cleanup_verses(Verse *verses, int n) {
+	for (int i = 0; i < n; i++) {
+		free(verses[i].text);
+	}
+	free(verses);
+}
+
+
 /**
  * Prompt the user to attempt to type the string.
  * Returns 1 on user success, 0 on failure.
@@ -257,7 +327,13 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
+	return EXIT_SUCCESS;
+
 	replace_unicode_escape_sequences(response.contents);
+
+	int num_verses = 0;
+	Verse *verses = malloc(sizeof(Verse) * 20);
+	get_verses(verses, 20, &num_verses, response.contents);
 
 	// Main loop.
 	for (int n=1; 1; n++) {
@@ -279,6 +355,7 @@ int main(int argc, char *argv[]) {
 
 	// Cleanup.
 	cleanup_response(&response);
+	cleanup_verses(verses, num_verses);
 
 	return EXIT_SUCCESS;
 }
