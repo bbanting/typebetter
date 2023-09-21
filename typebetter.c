@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <curl/curl.h>
+#include <ctype.h>
 
 
 #define REQUEST_FAILURE 1
@@ -199,38 +200,45 @@ void cleanup_response(Response *res) {
 /**Return a string containing the verse referenced by n. If the verse
  * is not found, return NULL. 
 */
-char *get_nth_verse(const char *text, unsigned n) {
-	// Get start and end indexes.
-	char search[10];
+char *get_nth_verse_text(const char *text, unsigned n) {
+	#define NEWLINES 4
 
+	char search[10];
+	char *start;
+	char *end;
+
+	// Get the start index for the verse text.
 	sprintf(search, "[%d]", n);
-	char *start = strstr(text, search);
+	start = strstr(text, search);
 	if (start == NULL) {
 		return NULL;
 	} else {
 		start += (strlen(search) + 1);
 	}
 
-	sprintf(search, "[%d]", n+1);
-	char *end = strstr(text, search);
-	if (end == NULL) {
-		end = (char *)(text + strlen(text));
+	// Get the end index for the verse text.
+	char *lbracket = strstr(start, "[");
+	char *rbracket = strstr(start, "]");
+	if (lbracket == NULL || rbracket == NULL) {
+		end = start + strlen(start) - NEWLINES; 
 	} else {
-		end -= 1;
+		end = lbracket - 1;
+		for (int i = 1; i < rbracket - lbracket; i++) {
+			if (!isdigit(lbracket[i])) {
+				end = start + strlen(start) - NEWLINES;
+				break;
+			}
+		}
 	}
 
-	// Allocate memory for verse.
+	// Allocate memory for verse text and copy.
 	char *str;
 	if ((str = malloc((end-start)+1)) == NULL) {
-		fprintf(stderr, "Malloc error in get_nth_verse\n");
+		fprintf(stderr, "Malloc error in get_nth_verse_text\n");
 		exit(EXIT_FAILURE);
 	}
-
-	// Copy verse string into str.
-	for (int i=0; i<end-start; i++) {
-		str[i] = start[i];
-	}
-	str[end-start] = 0;
+	strncpy(str, start, end - start);
+	str[end-start] = '\0';
 
 	return str;
 }
@@ -267,9 +275,7 @@ void get_verses(Verse *verses, size_t size, int *num_verses, const char *text) {
 	unsigned last_verse_number = get_last_verse_number(text);
 
 	for (unsigned i = 1; i <= last_verse_number; i++) {
-		// Change get_nth_verse to return null on fail
-		// Change get_nth_verse so that it doesn't look for n+1 verse
-		char *verse_text = get_nth_verse(text, i);
+		char *verse_text = get_nth_verse_text(text, i);
 		if (verse_text == NULL) continue;
 
 		// Check if verses is full. If so, expand.
@@ -337,7 +343,7 @@ int main(int argc, char *argv[]) {
 
 	// Main loop.
 	for (int n=1; 1; n++) {
-		char *verse = get_nth_verse(response.contents, n);
+		char *verse = get_nth_verse_text(response.contents, n);
 		if (verse == NULL) {
 			break;
 		}
