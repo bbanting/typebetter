@@ -201,7 +201,7 @@ void cleanup_response(Response *res) {
  * is not found, return NULL. 
 */
 char *get_nth_verse_text(const char *text, unsigned n) {
-	#define NEWLINES 4
+	#define TRAILING_CHARS 6
 
 	char search[10];
 	char *start;
@@ -220,12 +220,12 @@ char *get_nth_verse_text(const char *text, unsigned n) {
 	char *lbracket = strstr(start, "[");
 	char *rbracket = strstr(start, "]");
 	if (lbracket == NULL || rbracket == NULL) {
-		end = start + strlen(start) - NEWLINES; 
+		end = start + strlen(start) - TRAILING_CHARS; 
 	} else {
 		end = lbracket - 1;
 		for (int i = 1; i < rbracket - lbracket; i++) {
 			if (!isdigit(lbracket[i])) {
-				end = start + strlen(start) - NEWLINES;
+				end = start + strlen(start) - TRAILING_CHARS;
 				break;
 			}
 		}
@@ -271,7 +271,9 @@ unsigned get_last_verse_number(const char *text) {
 
 
 /**Copy verses from text into array. */
-void get_verses(Verse *verses, size_t size, int *num_verses, const char *text) {
+Verse *get_verses(const char *text, unsigned *num_verses) {
+	size_t size = 20;
+	Verse *verses = malloc(sizeof(Verse) * size);
 	unsigned last_verse_number = get_last_verse_number(text);
 
 	for (unsigned i = 1; i <= last_verse_number; i++) {
@@ -294,11 +296,13 @@ void get_verses(Verse *verses, size_t size, int *num_verses, const char *text) {
 		verses[*num_verses] = verse;
 		*num_verses += 1;
 	}
+
+	return verses;
 }
 
 
 /**Free the memory used by verses. */
-void cleanup_verses(Verse *verses, int n) {
+void cleanup_verses(Verse *verses, unsigned n) {
 	for (int i = 0; i < n; i++) {
 		free(verses[i].text);
 	}
@@ -333,30 +337,21 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	return EXIT_SUCCESS;
-
 	replace_unicode_escape_sequences(response.contents);
 
-	int num_verses = 0;
-	Verse *verses = malloc(sizeof(Verse) * 20);
-	get_verses(verses, 20, &num_verses, response.contents);
+	unsigned num_verses = 0;
+	Verse *verses = get_verses(response.contents, &num_verses);
 
 	// Main loop.
-	for (int n=1; 1; n++) {
-		char *verse = get_nth_verse_text(response.contents, n);
-		if (verse == NULL) {
-			break;
-		}
-		
-		printf("Verse %u:\n%s\n", n, verse);
+	for (int i=0; i < num_verses; i++) {
+		printf("Verse %u:\n%s\n", verses[i].number, verses[i].text);
 
-		if (make_attempt(verse) == 1) {
+		if (make_attempt(verses[i].text) == 1) {
 			printf("You did it.\n\n");
 		} else {
 			printf("You didn't do it.\n\n");
 		}
 
-		free(verse);
 	}
 
 	// Cleanup.
