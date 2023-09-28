@@ -20,6 +20,7 @@ typedef struct Response {
 typedef struct Verse {
 	unsigned number;
 	char *text;
+	unsigned n_words;
 } Verse;
 
 
@@ -247,6 +248,12 @@ char *get_nth_verse_text(const char *text, unsigned n) {
 	return str;
 }
 
+/**Get the number of words in text. */
+unsigned count_words(const char *text) {
+	// TODO: Implement this
+	return 5; 
+}
+
 
 /**Get the number of the last verse in the chapter. */
 unsigned get_last_verse_number(const char *text) {
@@ -282,6 +289,7 @@ Verse *get_verses(const char *text, unsigned *num_verses) {
 
 	for (unsigned i = 1; i <= last_verse_number; i++) {
 		char *verse_text = get_nth_verse_text(text, i);
+		unsigned verse_word_count = count_words(text);
 		if (verse_text == NULL) continue;
 
 		// Check if verses is full. If so, expand.
@@ -296,7 +304,7 @@ Verse *get_verses(const char *text, unsigned *num_verses) {
 		}
 
 		// Make and append the verse.
-		Verse verse = {i, verse_text};
+		Verse verse = {i, verse_text, verse_word_count};
 		verses[*num_verses] = verse;
 		*num_verses += 1;
 	}
@@ -351,8 +359,9 @@ int main(int argc, char *argv[]) {
 	unsigned num_verses = 0;
 	Verse *verses = get_verses(response.contents, &num_verses);
 	unsigned total_time = 0;
-	unsigned successful_time = 0;
 	unsigned successes = 0;
+	unsigned success_time = 0;
+	unsigned success_words = 0;
 
 	// Main loop.
 	for (unsigned i=0; i < num_verses; i++) {
@@ -362,7 +371,8 @@ int main(int argc, char *argv[]) {
 		if (make_attempt(verses[i].text, &t) > 0) {
 			printf("You did it (%us).\n\n", t);
 			successes += 1;
-			successful_time += t;
+			success_time += t;
+			success_words += verses[i].n_words;
 		} else {
 			printf("You didn't do it.\n\n");
 		}
@@ -372,6 +382,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	printf("This chapter took you %us total to complete.\n", total_time);
+	printf("You successfully completed %u%% of the verses (%u/%u).\n", (successes * 100) / num_verses, successes, num_verses);
+	printf("You averaged %u words/minute (failures don't count).\n", (success_words * 60) / success_time);
 
 	// Cleanup.
 	cleanup_response(&response);
