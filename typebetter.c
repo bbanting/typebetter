@@ -346,8 +346,8 @@ int main(int argc, char *argv[]) {
 	Verse *verses = get_verses(response.contents, &num_verses);
 
 	// Main loop.
-	for (int i=7; i < num_verses; i++) {
-		printf("Verse %u:\n%s\n", verses[i].number, verses[i].text);
+	for (unsigned i=0; i < num_verses; i++) {
+		printf("Verse %u (%u/%u):\n%s\n", verses[i].number, i+1, num_verses, verses[i].text);
 
 		if (make_attempt(verses[i].text) == 1) {
 			printf("You did it.\n\n");

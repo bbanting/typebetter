@@ -11,4 +11,5 @@ A very simple command line tool for practicing typing.
 - [ ] high score
 - [ ] More sophisticated comparison logic?
 - [ ] Cache previous chapter text
-- [ ] Remove newline escape sequences
+- [x] Remove newline escape sequences
+- [ ] A hotkey for quitting
