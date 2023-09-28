@@ -3,6 +3,7 @@
 #include <string.h>
 #include <curl/curl.h>
 #include <ctype.h>
+#include <unistd.h>
 
 
 #define REQUEST_FAILURE 1
@@ -317,12 +318,17 @@ void cleanup_verses(Verse *verses, unsigned n) {
  * Prompt the user to attempt to type the string.
  * Returns 1 on user success, 0 on failure.
  */
-int make_attempt(char *verse) {
+unsigned make_attempt(char *verse_text, unsigned *t) {
 	char attempt[512];
-	fgets(attempt, 512, stdin);
-	attempt[strlen(attempt)-1] = '\0'; // Remove newline.
 
-	if (!strcmp(verse, attempt)) {
+	time_t start = time(NULL);
+	fgets(attempt, 512, stdin);
+	time_t finish = time(NULL);
+
+	attempt[strlen(attempt)-1] = '\0'; // Remove newline.
+	*t = finish - start;
+
+	if (!strcmp(verse_text, attempt)) {
 		return 1;
 	} else {
 		return 0;
@@ -344,17 +350,28 @@ int main(int argc, char *argv[]) {
 
 	unsigned num_verses = 0;
 	Verse *verses = get_verses(response.contents, &num_verses);
+	unsigned total_time = 0;
+	unsigned successful_time = 0;
+	unsigned successes = 0;
 
 	// Main loop.
 	for (unsigned i=0; i < num_verses; i++) {
+		unsigned t;
 		printf("Verse %u (%u/%u):\n%s\n", verses[i].number, i+1, num_verses, verses[i].text);
 
-		if (make_attempt(verses[i].text) == 1) {
-			printf("You did it.\n\n");
+		if (make_attempt(verses[i].text, &t) > 0) {
+			printf("You did it (%us).\n\n", t);
+			successes += 1;
+			successful_time += t;
 		} else {
 			printf("You didn't do it.\n\n");
 		}
+
+		total_time += t;
+		sleep(1);
 	}
+
+	printf("This chapter took you %us total to complete.\n", total_time);
 
 	// Cleanup.
 	cleanup_response(&response);
