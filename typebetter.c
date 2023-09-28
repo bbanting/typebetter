@@ -85,7 +85,7 @@ char get_char_from_unicode_escape_sequence(const char *string, unsigned offset) 
 
 
 /**Replace unicode escape sequences with appropriate characters. */
-void replace_unicode_escape_sequences(char *text) {
+void replace_escape_sequences(char *text) {
 	char new_text[strlen(text)+1];
 	unsigned new_len = 0;
 
@@ -95,6 +95,9 @@ void replace_unicode_escape_sequences(char *text) {
 			// It's a unicode escape sequence.
 			new_text[new_len++] = get_char_from_unicode_escape_sequence(text, i+2);
 			i += 6;
+		} else if (text[i] == '\\' && text[i+1] == 'n') {
+			// It's a newline escape sequence.
+			i += 2;
 		} else {
 			// It's a normal character.
 			new_text[new_len++] = text[i];
@@ -337,13 +340,13 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	replace_unicode_escape_sequences(response.contents);
+	replace_escape_sequences(response.contents);
 
 	unsigned num_verses = 0;
 	Verse *verses = get_verses(response.contents, &num_verses);
 
 	// Main loop.
-	for (int i=0; i < num_verses; i++) {
+	for (int i=7; i < num_verses; i++) {
 		printf("Verse %u:\n%s\n", verses[i].number, verses[i].text);
 
 		if (make_attempt(verses[i].text) == 1) {
@@ -351,7 +354,6 @@ int main(int argc, char *argv[]) {
 		} else {
 			printf("You didn't do it.\n\n");
 		}
-
 	}
 
 	// Cleanup.
